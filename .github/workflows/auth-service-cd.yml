@@ -81,7 +81,7 @@ jobs:
 
     - name: Update Auth Service in Helm values
       run: |
-        cd cjet-k8s/helm
+        cd cjet-k8s-public/helm
         VERSION="${{ steps.deployment.outputs.version }}"
         
         echo "📝 Current Helm values (auth section):"
@@ -101,7 +101,7 @@ jobs:
 
     - name: Commit and push Auth Service update
       run: |
-        cd cjet-k8s
+        cd cjet-k8s-public
         VERSION="${{ steps.deployment.outputs.version }}"
         COMMIT_SHA="${{ steps.deployment.outputs.commit_sha }}"
         
