@@ -3,7 +3,7 @@
 > **현대적인 항공편 예약 시스템의 백엔드 API**  
 > Flask + Docker + Kubernetes + ArgoCD를 활용한 완전 자동화 GitOps 워크플로우
 
-[![CI/CD](https://github.com/Cloud-Jet/cjet-backend/workflows/CI/badge.svg)](https://github.com/Cloud-Jet/cjet-backend/actions)
+[![CI/CD](https://github.com/Cloud-Jet/cjet-backend-public/workflows/CI/badge.svg)](https://github.com/Cloud-Jet/cjet-backend-public/actions)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=cloudjet-backend&metric=alert_status)](https://sonarcloud.io/dashboard?id=cloudjet-backend)
 
 ---
@@ -129,7 +129,7 @@ graph TD
 
 ### **1. 프로젝트 클론**
 ```bash
-git clone https://github.com/Cloud-Jet/cjet-backend.git
+git clone https://github.com/Cloud-Jet/cjet-backend-public.git
 cd cjet-backend
 ```
 
@@ -207,7 +207,7 @@ docker-compose up -d
 ### **Helm 차트로 배포**
 ```bash
 # cjet-k8s 레포지토리 클론
-git clone https://github.com/Cloud-Jet/cjet-k8s.git
+git clone https://github.com/Cloud-Jet/cjet-k8s-public.git
 cd cjet-k8s
 
 # 네임스페이스 생성
@@ -221,7 +221,7 @@ helm install cloudjet ./helm -n cloudjet
 ```bash
 # ArgoCD Application 생성
 argocd app create cloudjet-app \
-    --repo https://github.com/Cloud-Jet/cjet-k8s.git \
+    --repo https://github.com/Cloud-Jet/cjet-k8s-public.git \
     --path helm \
     --dest-server https://kubernetes.default.svc \
     --dest-namespace cloudjet \
@@ -381,9 +381,9 @@ GET /api/admin/health             # Admin Service
 
 ## 📞 **연락처**
 
-- **프로젝트 리포**: [https://github.com/Cloud-Jet/cjet-backend](https://github.com/Cloud-Jet/cjet-backend)
-- **이슈 리포팅**: [GitHub Issues](https://github.com/Cloud-Jet/cjet-backend/issues)
-- **문서**: [GitHub Wiki](https://github.com/Cloud-Jet/cjet-backend/wiki)
+- **프로젝트 리포**: [https://github.com/Cloud-Jet/cjet-backend-public](https://github.com/Cloud-Jet/cjet-backend-public)
+- **이슈 리포팅**: [GitHub Issues](https://github.com/Cloud-Jet/cjet-backend-public/issues)
+- **문서**: [GitHub Wiki](https://github.com/Cloud-Jet/cjet-backend-public/wiki)
 
 ---
 

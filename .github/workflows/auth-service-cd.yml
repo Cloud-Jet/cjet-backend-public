@@ -74,9 +74,9 @@ jobs:
     - name: Clone cjet-k8s repository
       uses: actions/checkout@v4
       with:
-        repository: ${{ github.repository_owner }}/cjet-k8s
+        repository: ${{ github.repository_owner }}/cjet-k8s-public
         token: ${{ secrets.K8S_REPO_TOKEN }}
-        path: cjet-k8s
+        path: cjet-k8s-public
         ref: main
 
     - name: Update Auth Service in Helm values

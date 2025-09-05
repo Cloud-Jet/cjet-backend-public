@@ -115,9 +115,9 @@ jobs:
     - name: Clone cjet-k8s repository
       uses: actions/checkout@v4
       with:
-        repository: ${{ github.repository_owner }}/cjet-k8s  # 같은 owner의 cjet-k8s 레포
+        repository: ${{ github.repository_owner }}/cjet-k8s-public  # 같은 owner의 cjet-k8s-public 레포
         token: ${{ secrets.K8S_REPO_TOKEN }}  # cjet-k8s 레포에 접근할 수 있는 토큰
-        path: cjet-k8s
+        path: cjet-k8s-public
         ref: main
 
     - name: Update Helm values.yaml for changed services only
@@ -125,7 +125,7 @@ jobs:
         VERSION="${{ steps.deployment.outputs.version }}"
         BUILT_SERVICES="${{ steps.deployment.outputs.built_services }}"
         
-        cd cjet-k8s/helm
+        cd cjet-k8s-public-public/helm
         
         if [ -z "$BUILT_SERVICES" ]; then
           echo "No services to update, skipping values.yaml update"
@@ -172,7 +172,7 @@ jobs:
         VERSION="${{ steps.deployment.outputs.version }}"
         BUILT_SERVICES="${{ steps.deployment.outputs.built_services }}"
         
-        cd cjet-k8s
+        cd cjet-k8s-public
         
         # Git 설정
         git config --local user.email "action@github.com"
@@ -194,7 +194,7 @@ jobs:
         Updated services:
         $SERVICES_LIST
 
-        Updated by CD pipeline from cjet-backend  
+        Updated by CD pipeline from cjet-backend-public  
         Commit: ${{ steps.deployment.outputs.commit_sha }}
         
         🤖 Generated with [GitHub Actions](https://github.com/${{ github.repository }}/actions)"
@@ -210,12 +210,12 @@ jobs:
         BUILT_SERVICES="${{ steps.deployment.outputs.built_services }}"
         
         echo "🎉 CD Pipeline completed successfully!"
-        echo "📦 Updated cjet-k8s/helm/values.yaml with version: $VERSION"
+        echo "📦 Updated cjet-k8s-public/helm/values.yaml with version: $VERSION"
         echo "🔧 Updated services: $BUILT_SERVICES"
         echo "🎯 Next step: Team member should run 'helm upgrade' command locally"
         echo ""
         echo "Helm upgrade command:"
-        echo "helm upgrade cloudjet ./cjet-k8s/helm --namespace user"
+        echo "helm upgrade cloudjet ./cjet-k8s-public/helm --namespace user"
         echo ""
         echo "Only the following services will be redeployed:"
         IFS=',' read -ra SERVICES <<< "$BUILT_SERVICES"
