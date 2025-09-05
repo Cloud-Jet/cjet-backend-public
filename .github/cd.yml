@@ -1,0 +1,224 @@
+name: CD
+
+# CloudJet Continuous Deployment Pipeline
+
+on:
+  repository_dispatch:
+    types: [deploy-services]
+  
+  # 테스트용 수동 실행
+  workflow_dispatch:
+    inputs:
+      built_services:
+        description: 'Services to deploy (comma-separated)'
+        required: true
+        default: 'auth-service'
+      version:
+        description: 'Version to deploy'
+        required: true
+        default: 'latest'
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: public.ecr.aws/v3g6g4v7
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout current repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Parse deployment information from dispatch
+      id: deployment
+      run: |
+        echo "Event name: ${{ github.event_name }}"
+        
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          # 수동 실행 시
+          echo "Manual workflow dispatch detected"
+          BUILT_SERVICES="${{ github.event.inputs.built_services }}"
+          VERSION="${{ github.event.inputs.version }}"
+          COMMIT_SHA="${{ github.sha }}"
+        else
+          # Repository dispatch 시
+          echo "Repository dispatch event received"
+          echo "Event payload: ${{ toJSON(github.event.client_payload) }}"
+          BUILT_SERVICES="${{ github.event.client_payload.built_services }}"
+          VERSION="${{ github.event.client_payload.version }}"
+          COMMIT_SHA="${{ github.event.client_payload.commit_sha }}"
+        fi
+        
+        if [ -z "$BUILT_SERVICES" ]; then
+          echo "❌ No services to deploy"
+          exit 1
+        fi
+        
+        echo "built_services=$BUILT_SERVICES" >> $GITHUB_OUTPUT
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
+        
+        echo "Built services: $BUILT_SERVICES"
+        echo "Version: $VERSION"
+        echo "Commit: $COMMIT_SHA"
+
+    - name: Verify ECR images exist for built services
+      run: |
+        VERSION="${{ steps.deployment.outputs.version }}"
+        BUILT_SERVICES="${{ steps.deployment.outputs.built_services }}"
+        
+        if [ -z "$BUILT_SERVICES" ]; then
+          echo "No services to verify, skipping ECR check"
+          exit 0
+        fi
+        
+        echo "Verifying images with tag: $VERSION"
+        echo "Built services: $BUILT_SERVICES"
+        
+        # 서비스명 → ECR 리포지토리명 매핑
+        declare -A SERVICE_TO_REPO
+        SERVICE_TO_REPO["admin-service"]="cj-admin-svc"
+        SERVICE_TO_REPO["auth-service"]="cj-auth-svc"
+        SERVICE_TO_REPO["booking-service"]="cj-booking-svc"
+        SERVICE_TO_REPO["flight-service"]="cj-flight-svc"
+        SERVICE_TO_REPO["payment-service"]="cj-payment-svc"
+        
+        # 빌드된 서비스들만 검증
+        IFS=',' read -ra SERVICES <<< "$BUILT_SERVICES"
+        for service in "${SERVICES[@]}"; do
+          repo_name="${SERVICE_TO_REPO[$service]}"
+          if [ -n "$repo_name" ]; then
+            echo "Checking $repo_name:$VERSION for service $service"
+            aws ecr-public describe-images \
+              --repository-name "$repo_name" \
+              --image-ids imageTag="$VERSION" \
+              --region us-east-1 || {
+              echo "❌ Image $repo_name:$VERSION not found in ECR"
+              exit 1
+            }
+            echo "✅ $repo_name:$VERSION found in ECR"
+          else
+            echo "⚠️ Unknown service: $service"
+          fi
+        done
+
+    - name: Clone cjet-k8s repository
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ github.repository_owner }}/cjet-k8s  # 같은 owner의 cjet-k8s 레포
+        token: ${{ secrets.K8S_REPO_TOKEN }}  # cjet-k8s 레포에 접근할 수 있는 토큰
+        path: cjet-k8s
+        ref: main
+
+    - name: Update Helm values.yaml for changed services only
+      run: |
+        VERSION="${{ steps.deployment.outputs.version }}"
+        BUILT_SERVICES="${{ steps.deployment.outputs.built_services }}"
+        
+        cd cjet-k8s/helm
+        
+        if [ -z "$BUILT_SERVICES" ]; then
+          echo "No services to update, skipping values.yaml update"
+          exit 0
+        fi
+        
+        echo "Updating values.yaml with version: $VERSION"
+        echo "Only updating services: $BUILT_SERVICES"
+        
+        # 서비스명 → values.yaml 키 매핑
+        declare -A SERVICE_TO_KEY
+        SERVICE_TO_KEY["admin-service"]="admin"
+        SERVICE_TO_KEY["auth-service"]="auth"
+        SERVICE_TO_KEY["booking-service"]="booking"
+        SERVICE_TO_KEY["flight-service"]="flight"
+        SERVICE_TO_KEY["payment-service"]="payment"
+        
+        # 변경된 서비스들만 업데이트
+        IFS=',' read -ra SERVICES <<< "$BUILT_SERVICES"
+        for service in "${SERVICES[@]}"; do
+          service_key="${SERVICE_TO_KEY[$service]}"
+          if [ -n "$service_key" ]; then
+            echo "Updating $service_key service tag to $VERSION"
+            
+            # 해당 서비스의 tag만 업데이트 (sed 사용)
+            sed -i "/^  $service_key:/,/^  [a-zA-Z]/ { 
+              /tag:/ {
+                s/tag: .*/tag: $VERSION/
+              }
+            }" values.yaml
+            
+            echo "✅ Updated $service ($service_key) to version $VERSION"
+          else
+            echo "⚠️ Unknown service mapping: $service"
+          fi
+        done
+        
+        echo ""
+        echo "Updated values.yaml (showing tag lines only):"
+        grep -A1 -B1 "tag:" values.yaml
+
+    - name: Commit and push to cjet-k8s
+      run: |
+        VERSION="${{ steps.deployment.outputs.version }}"
+        BUILT_SERVICES="${{ steps.deployment.outputs.built_services }}"
+        
+        cd cjet-k8s
+        
+        # Git 설정
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action CD"
+        
+        # 변경사항 확인
+        if git diff --quiet; then
+          echo "No changes to commit"
+          exit 0
+        fi
+        
+        # 변경된 서비스 목록을 보기 좋게 포맷
+        SERVICES_LIST=$(echo "$BUILT_SERVICES" | tr ',' '\n' | sed 's/^/- /' | tr '\n' ' ')
+        
+        # 커밋 및 푸시
+        git add helm/values.yaml
+        git commit -m "🚀 Update image tags to $VERSION
+
+        Updated services:
+        $SERVICES_LIST
+
+        Updated by CD pipeline from cjet-backend  
+        Commit: ${{ steps.deployment.outputs.commit_sha }}
+        
+        🤖 Generated with [GitHub Actions](https://github.com/${{ github.repository }}/actions)"
+        
+        git push origin main
+        
+        echo "✅ Successfully updated cjet-k8s with version $VERSION"
+        echo "✅ Updated services: $BUILT_SERVICES"
+
+    - name: Deployment summary
+      run: |
+        VERSION="${{ steps.deployment.outputs.version }}"
+        BUILT_SERVICES="${{ steps.deployment.outputs.built_services }}"
+        
+        echo "🎉 CD Pipeline completed successfully!"
+        echo "📦 Updated cjet-k8s/helm/values.yaml with version: $VERSION"
+        echo "🔧 Updated services: $BUILT_SERVICES"
+        echo "🎯 Next step: Team member should run 'helm upgrade' command locally"
+        echo ""
+        echo "Helm upgrade command:"
+        echo "helm upgrade cloudjet ./cjet-k8s/helm --namespace user"
+        echo ""
+        echo "Only the following services will be redeployed:"
+        IFS=',' read -ra SERVICES <<< "$BUILT_SERVICES"
+        for service in "${SERVICES[@]}"; do
+          echo "  - $service → $VERSION"
+        done

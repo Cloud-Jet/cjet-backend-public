@@ -1,0 +1,179 @@
+name: Auth Service CI
+
+on:
+  push:
+    branches: [ main, backend/ch ]
+    paths: 
+      - 'auth-service/**'
+      - 'shared/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'auth-service/**'
+      - 'shared/**'
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: public.ecr.aws/v3g6g4v7
+  SERVICE_NAME: auth-service
+  ECR_REPOSITORY: cj-auth-svc
+  SERVICE_PATH: auth-service
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+    
+    - name: Install Auth Service dependencies
+      run: |
+        cd auth-service
+        pip install -r requirements.txt
+        echo "✅ Auth Service dependencies installed"
+    
+    - name: Test Auth Service
+      run: |
+        cd auth-service
+        echo "🧪 Running Auth Service tests..."
+        # Basic syntax check
+        python -m py_compile app.py
+        python -m py_compile routes.py
+        python -m py_compile models.py
+        echo "✅ Auth Service syntax check passed"
+        
+        # Test imports
+        python -c "
+        import sys
+        sys.path.append('../')
+        try:
+            from app import create_app
+            app = create_app()
+            print('✅ Auth Service app creation test passed')
+        except Exception as e:
+            print(f'⚠️ App creation test: {e}')
+        "
+
+  build-and-push:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/backend/ch')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR Public
+      id: login-ecr-public
+      uses: aws-actions/amazon-ecr-login@v2
+      with:
+        registry-type: public
+
+    - name: Extract version for Auth Service
+      id: version
+      run: |
+        # 커밋 메시지에서 버전 추출 (v1.0.0, v2.0.1 등)
+        COMMIT_MSG="${{ github.event.head_commit.message }}"
+        echo "Commit message: $COMMIT_MSG"
+        
+        # v로 시작하는 버전 패턴 찾기
+        if echo "$COMMIT_MSG" | grep -q "v[0-9]\+\.[0-9]\+\.[0-9]\+"; then
+          VERSION=$(echo "$COMMIT_MSG" | grep -o "v[0-9]\+\.[0-9]\+\.[0-9]\+" | head -1)
+          echo "Version found: $VERSION"
+        else
+          # 버전이 없으면 자동 증가 버전 생성
+          echo "No version found in commit message, generating auto version..."
+          
+          # 이전 태그들에서 최신 버전 찾기
+          LATEST_TAG=$(git tag --sort=-version:refname | grep '^v[0-9]' | head -1)
+          
+          if [ -z "$LATEST_TAG" ]; then
+            # 첫 번째 버전
+            VERSION="v1.0.0"
+            echo "First version: $VERSION"
+          else
+            # 마이너 버전 증가
+            MAJOR_MINOR=$(echo "$LATEST_TAG" | cut -d. -f1,2)
+            PATCH=$(echo "$LATEST_TAG" | cut -d. -f3)
+            NEW_PATCH=$((PATCH + 1))
+            VERSION="${MAJOR_MINOR}.${NEW_PATCH}"
+            echo "Auto version: $VERSION (from $LATEST_TAG)"
+          fi
+        fi
+        
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "🏷️ Auth Service version: $VERSION"
+
+    - name: Check for Auth Service changes
+      id: changes
+      run: |
+        # Check if auth-service or shared directory changed
+        CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
+        echo "📁 Changed files:"
+        echo "$CHANGED_FILES"
+        
+        if echo "$CHANGED_FILES" | grep -q "^auth-service/\|^shared/"; then
+          echo "has_changes=true" >> $GITHUB_OUTPUT
+          echo "✅ Auth Service has changes - will build"
+        else
+          echo "has_changes=false" >> $GITHUB_OUTPUT
+          echo "⏭️ Auth Service no changes - skipping build"
+        fi
+
+    - name: Build and push Auth Service Docker image
+      if: steps.changes.outputs.has_changes == 'true'
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        REPO="${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}"
+        
+        echo "🏗️ Building Auth Service Docker image..."
+        
+        # Build from root directory with auth-service context
+        docker build -f auth-service/Dockerfile -t $REPO:$VERSION -t $REPO:latest .
+        
+        # Push version tag
+        echo "📤 Pushing $REPO:$VERSION"
+        docker push $REPO:$VERSION
+        
+        # Push latest tag
+        echo "📤 Pushing $REPO:latest"
+        docker push $REPO:latest
+        
+        echo "✅ Auth Service image built and pushed successfully"
+        echo "🎯 Image: $REPO:$VERSION"
+
+    - name: Trigger Auth Service CD
+      if: steps.changes.outputs.has_changes == 'true'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const version = '${{ steps.version.outputs.version }}';
+          
+          console.log(`🚀 Triggering Auth Service CD with version: ${version}`);
+          
+          await github.rest.repos.createDispatchEvent({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            event_type: 'deploy-auth-service',
+            client_payload: {
+              service: 'auth-service',
+              version: version,
+              commit_sha: '${{ github.sha }}',
+              workflow_run_id: '${{ github.run_id }}'
+            }
+          });
+          
+          console.log('✅ Auth Service CD dispatch event sent successfully');

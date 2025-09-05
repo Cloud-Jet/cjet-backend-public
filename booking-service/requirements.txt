@@ -1,0 +1,25 @@
+# Booking Service Requirements
+# 예약 서비스용 Python 패키지 목록
+
+# Flask 웹 프레임워크
+flask==2.3.3
+flask-cors==4.0.0
+
+# JWT 토큰 검증 (사용자 인증)
+PyJWT==2.8.0
+
+# 데이터베이스 연결 (MySQL/RDS)
+mysql-connector-python==8.1.0
+
+# 환경변수 관리
+python-dotenv==1.0.0
+
+# 보안 (비밀번호 해싱)
+werkzeug==2.3.7
+
+
+# HTTP 요청 (다른 마이크로서비스 호출)
+requests==2.31.0
+
+# Redis 캐시/세션 관리 (ElastiCache 연결)
+redis==4.6.0

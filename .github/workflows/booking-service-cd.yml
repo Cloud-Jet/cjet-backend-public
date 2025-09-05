@@ -1,0 +1,155 @@
+name: Booking Service CD
+
+on:
+  repository_dispatch:
+    types: [deploy-booking-service]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Booking service version to deploy'
+        required: true
+        default: 'latest'
+
+env:
+  AWS_REGION: us-east-1
+  SERVICE_NAME: booking-service
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout current repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Parse deployment information
+      id: deployment
+      run: |
+        echo "🏨 Booking Service CD Pipeline Started"
+        
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          VERSION="${{ github.event.inputs.version }}"
+          COMMIT_SHA="${{ github.sha }}"
+          echo "📋 Manual deployment triggered"
+        else
+          VERSION="${{ github.event.client_payload.version }}"
+          COMMIT_SHA="${{ github.event.client_payload.commit_sha }}"
+          echo "🤖 Automatic deployment from CI"
+        fi
+        
+        if [ -z "$VERSION" ]; then
+          echo "❌ No version specified"
+          exit 1
+        fi
+        
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
+        
+        echo "📦 Deploying Booking Service version: $VERSION"
+        echo "🔗 From commit: $COMMIT_SHA"
+
+    - name: Verify ECR image exists
+      run: |
+        VERSION="${{ steps.deployment.outputs.version }}"
+        
+        echo "🔍 Verifying Booking Service image exists in ECR..."
+        aws ecr-public describe-images \
+          --repository-name "cj-booking-svc" \
+          --image-ids imageTag="$VERSION" \
+          --region us-east-1 || {
+          echo "❌ Booking Service image $VERSION not found in ECR"
+          exit 1
+        }
+        echo "✅ Booking Service image $VERSION found in ECR"
+
+    - name: Clone cjet-k8s repository
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ github.repository_owner }}/cjet-k8s
+        token: ${{ secrets.K8S_REPO_TOKEN }}
+        path: cjet-k8s
+        ref: main
+
+    - name: Update Booking Service in Helm values
+      run: |
+        cd cjet-k8s/helm
+        VERSION="${{ steps.deployment.outputs.version }}"
+        
+        echo "📝 Current Helm values (booking section):"
+        grep -A10 "^  booking:" values.yaml || echo "Booking section not found"
+        
+        # Update only the booking service tag
+        sed -i '/^  booking:/,/^  [a-zA-Z]/ { 
+          /tag:/ {
+            s/tag: .*/tag: '$VERSION'/
+          }
+        }' values.yaml
+        
+        echo ""
+        echo "✅ Updated booking service to version: $VERSION"
+        echo "📝 Updated Helm values (booking section):"
+        grep -A10 "^  booking:" values.yaml
+
+    - name: Commit and push Booking Service update
+      run: |
+        cd cjet-k8s
+        VERSION="${{ steps.deployment.outputs.version }}"
+        COMMIT_SHA="${{ steps.deployment.outputs.commit_sha }}"
+        
+        # Git configuration
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action - Booking Service CD"
+        
+        # Check for changes
+        if git diff --quiet; then
+          echo "ℹ️ No changes to commit"
+          exit 0
+        fi
+        
+        # Commit changes
+        git add helm/values.yaml
+        git commit -m "🏨 Update booking-service to $VERSION
+
+        🔧 Service: booking-service
+        📦 Version: $VERSION
+        🔗 Commit: $COMMIT_SHA
+        ⚡ Updated by Booking Service CD pipeline
+
+        🤖 Generated with GitHub Actions"
+        
+        # Push changes
+        git push origin main
+        
+        echo "✅ Booking Service deployment committed and pushed"
+        echo "🎉 ArgoCD will automatically sync the changes"
+
+    - name: Deployment summary
+      run: |
+        VERSION="${{ steps.deployment.outputs.version }}"
+        
+        echo "🎉 Booking Service CD completed successfully!"
+        echo ""
+        echo "📋 Deployment Summary:"
+        echo "  🔧 Service: booking-service"
+        echo "  📦 Version: $VERSION"
+        echo "  🎯 Target: Kubernetes cluster"
+        echo "  📝 Updated: cjet-k8s/helm/values.yaml"
+        echo ""
+        echo "⏳ Next steps:"
+        echo "  1. ArgoCD will detect the changes automatically"
+        echo "  2. Booking service will be deployed with rolling update"
+        echo "  3. Monitor the deployment in ArgoCD dashboard"
+        echo ""
+        echo "🔗 ArgoCD will deploy to:"
+        echo "  • Namespace: user"
+        echo "  • Service: booking-service"
+        echo "  • Image: public.ecr.aws/v3g6g4v7/cj-booking-svc:$VERSION"
