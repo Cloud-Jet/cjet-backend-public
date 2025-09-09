@@ -28,7 +28,6 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
+        uses: SonarSource/sonarqube-scan-action@v3
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # GitHub에서 자동 제공
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}     # SonarCloud 토큰
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
