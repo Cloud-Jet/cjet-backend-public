@@ -2,6 +2,7 @@
 # JWT 토큰 기반 회원가입, 로그인, 토큰 검증 담당
 # CD 경로수정했음 
 # v3.0.0 테스트
+# v5.0 테스트 
 from flask import Flask
 from routes import auth_bp
 import os
