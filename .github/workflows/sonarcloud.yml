@@ -38,13 +38,14 @@ jobs:
         with:
           status: success
           channel: '#ci-cd-alerts'
-          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
           text: |
             ✅ **Backend 코드 품질 검사 성공!**
             Repository: ${{ github.repository }}
             Branch: ${{ github.ref_name }}
             Commit: ${{ github.sha }}
             SonarCloud: https://sonarcloud.io/project/overview?id=Cloud-Jet_cjet-backend-public
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
       - name: Slack Failure Notification
         if: failure()
@@ -52,10 +53,11 @@ jobs:
         with:
           status: failure
           channel: '#ci-cd-alerts'
-          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
           text: |
             ❌ **Backend 코드 품질 검사 실패!**
             Repository: ${{ github.repository }}
             Branch: ${{ github.ref_name }}
             Commit: ${{ github.sha }}
             확인 필요: https://github.com/${{ github.repository }}/actions
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
