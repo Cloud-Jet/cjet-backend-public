@@ -47,9 +47,11 @@ CloudJet은 현대적인 항공편 예약 시스템을 구축하기 위한 **마
 | **Container** | Docker, Kubernetes (EKS) |
 | **Service Mesh** | Istio 1.27 |
 | **CI/CD** | GitHub Actions, ArgoCD |
+| **Registry** | AWS ECR Public Registry |
 | **Cloud** | AWS (EKS, ECR, Secrets Manager) |
-| **Monitoring** | Prometheus, Grafana, Jaeger |
+| **Monitoring** | Prometheus, Grafana, Jaeger, Kiali |
 | **Payment** | Bootpay API Integration |
+| **Security** | JWT, External Secrets Operator |
 
 ---
 
@@ -59,36 +61,39 @@ CloudJet은 현대적인 항공편 예약 시스템을 구축하기 위한 **마
 - **기능**: 사용자 인증, JWT 토큰 발급, 권한 관리
 - **주요 API**:
   - `POST /api/auth/login` - 사용자 로그인
-  - `POST /api/auth/register` - 회원가입
-  - `GET /api/auth/verify` - 토큰 검증
+  - `POST /api/auth/signup` - 회원가입
+  - `GET /api/auth/health` - 서비스 헬스체크
 
 ### ✈️ **Flight Service (5002)**
-- **기능**: 항공편 검색, 좌석 정보 조회, 스케줄 관리
+- **기능**: 항공편 검색, 공항 정보, 프로모션 조회
 - **주요 API**:
   - `GET /api/flights/search` - 항공편 검색
-  - `GET /api/flights/{id}/seats` - 좌석 조회
-  - `GET /api/flights/schedule` - 운항 스케줄
+  - `GET /api/airports` - 공항 목록
+  - `GET /api/flights/featured` - 특가 항공편
+  - `GET /api/promotions` - 프로모션 조회
 
 ### 📋 **Booking Service (5003)**
-- **기능**: 예약 생성, 예약 관리, 예약 내역 조회
+- **기능**: 예약 생성, 예약 관리, 좌석 조회
 - **주요 API**:
   - `POST /api/bookings` - 예약 생성
-  - `GET /api/bookings/{id}` - 예약 조회
-  - `PUT /api/bookings/{id}/cancel` - 예약 취소
+  - `GET /api/bookings` - 사용자 예약 목록
+  - `GET /api/bookings/{booking_number}` - 예약 조회
+  - `POST /api/bookings/{booking_number}/cancel` - 예약 취소
+  - `GET /api/bookings/occupied-seats/{schedule_id}` - 좌석 조회
 
-### 💳 **Payment Service (5004)**
-- **기능**: 결제 처리, Bootpay 연동, 결제 내역 관리
+### 💳 **Payment Service (5005)**
+- **기능**: Bootpay 결제 처리, 웹훅 처리, 결제 관리
 - **주요 API**:
-  - `POST /api/payments/initialize` - 결제 초기화
-  - `POST /api/payments/webhook` - 결제 상태 웹훅
-  - `GET /api/payments/{id}/status` - 결제 상태 조회
+  - `POST /api/payments/init` - 결제 초기화
+  - `POST /api/payments/webhook` - Bootpay 웹훅
+  - `POST /api/payments/attach-booking` - 예약-결제 연결
 
-### 👨‍💼 **Admin Service (5005)**
+### 👨‍💼 **Admin Service (5004)**
 - **기능**: 관리자 대시보드, 통계, 시스템 관리
 - **주요 API**:
   - `GET /api/admin/stats` - 시스템 통계
-  - `PUT /api/admin/flights/{id}` - 항공편 수정
-  - `GET /api/admin/bookings` - 전체 예약 내역
+  - `GET /api/admin/bookings` - 전체 예약 관리
+  - `GET /api/admin/users` - 사용자 관리
 
 ---
 
@@ -130,22 +135,22 @@ graph TD
 ### **1. 프로젝트 클론**
 ```bash
 git clone https://github.com/Cloud-Jet/cjet-backend-public.git
-cd cjet-backend
+cd cjet-backend-public
 ```
 
 ### **2. 환경변수 설정**
 ```bash
-# .env 파일 생성 (각 서비스별 설정 필요)
-cp .env.example .env
-
-# 필수 환경변수 설정
+# 각 서비스별 환경변수 설정
+# auth-service/.env
 SECRET_KEY=your-jwt-secret-key
 DB_HOST=localhost
-DB_USER=cloudjet
-DB_PASSWORD=your-database-password
-DB_NAME=cloudjet
+DB_USER=cloudjet_user
+DB_PASSWORD=cloudjet_pass
+DB_NAME=cloudjet_airline
 REDIS_HOST=localhost
-REDIS_PASSWORD=your-redis-password
+REDIS_PORT=6379
+
+# payment-service/.env
 BOOTPAY_REST_API_KEY=your-bootpay-api-key
 BOOTPAY_PRIVATE_KEY=your-bootpay-private-key
 ```
@@ -155,32 +160,50 @@ BOOTPAY_PRIVATE_KEY=your-bootpay-private-key
 # MySQL 컨테이너 실행
 docker run -d --name mysql-cloudjet \
     -e MYSQL_ROOT_PASSWORD=rootpassword \
-    -e MYSQL_DATABASE=cloudjet \
-    -e MYSQL_USER=cloudjet \
-    -e MYSQL_PASSWORD=your-password \
+    -e MYSQL_DATABASE=cloudjet_airline \
+    -e MYSQL_USER=cloudjet_user \
+    -e MYSQL_PASSWORD=cloudjet_pass \
     -p 3306:3306 mysql:8.0
 
-# 스키마 생성
-mysql -h localhost -u cloudjet -p cloudjet < sql/cloudjet_setup.sql
+# 데이터베이스 스키마 생성 (MySQL Workbench 또는 CLI에서 순서대로 실행)
+# sql/01-database-setup.sql      # 데이터베이스 생성
+# sql/02-basic-tables.sql        # 기본 테이블
+# sql/03-flight-booking-tables.sql  # 항공편/예약 테이블
+# sql/04-system-tables.sql       # 시스템 테이블
+# sql/05-basic-data.sql          # 기본 데이터
+# sql/06-sample-data.sql         # 샘플 데이터
+# sql/07-views-indexes.sql       # 뷰 및 인덱스
+
+# 자세한 설정은 sql/README.md 참조
 ```
 
 ### **4. Redis 설정**
 ```bash
-# Redis 컨테이너 실행
+# Redis 컨테이너 실행 (비밀번호 없이)
 docker run -d --name redis-cloudjet \
     -p 6379:6379 \
-    redis:7.0 redis-server --requirepass your-redis-password
+    redis:7.0
 ```
 
 ### **5. 서비스 실행**
 ```bash
-# 개별 서비스 실행 (예시)
+# 개별 서비스 실행 (예시: Auth Service)
 cd auth-service
 pip install -r requirements.txt
 python app.py
 
-# 또는 Docker Compose로 전체 실행
-docker-compose up -d
+# 다른 터미널에서 다른 서비스들 실행
+cd flight-service && python app.py   # 포트 5002
+cd booking-service && python app.py  # 포트 5003
+cd admin-service && python app.py    # 포트 5004
+cd payment-service && python app.py  # 포트 5005
+
+# 전체 헬스체크
+curl http://localhost:5001/api/auth/health
+curl http://localhost:5002/api/flights/health
+curl http://localhost:5003/api/bookings/health
+curl http://localhost:5004/api/admin/health
+curl http://localhost:5005/api/payments/health
 ```
 
 ---
@@ -332,11 +355,14 @@ BOOTPAY_PRIVATE_KEY=         # 결제 API 비밀키
 ### **헬스체크**
 ```bash
 # 각 서비스의 헬스체크 엔드포인트
-GET /api/auth/health              # Auth Service
-GET /api/flights/health           # Flight Service
-GET /api/bookings/health          # Booking Service
-GET /api/payments/health          # Payment Service
-GET /api/admin/health             # Admin Service
+GET /api/auth/health              # Auth Service (포트 5001)
+GET /api/flights/health           # Flight Service (포트 5002)
+GET /api/bookings/health          # Booking Service (포트 5003)
+GET /api/admin/health             # Admin Service (포트 5004)
+GET /api/payments/health          # Payment Service (포트 5005)
+
+# Kubernetes 환경에서의 통합 헬스체크
+GET /api/health                   # API Gateway 통합 헬스체크
 ```
 
 ---
