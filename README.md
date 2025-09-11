@@ -21,7 +21,7 @@ CloudJet은 현대적인 항공편 예약 시스템을 구축하기 위한 **마
 - ☁️ **클라우드 네이티브**: AWS EKS + ECR + Istio 서비스 메시 활용
 - 🔒 **엔터프라이즈 보안**: JWT 인증, 시크릿 관리, 보안 정책 적용
 - 📊 **코드 품질 관리**: SonarCloud 정적 분석 + 실시간 Slack 알림
-- 🔍 **모니터링 & 로깅**: 프로메테우스 기반 완전 관측성
+- 📊 **완전한 관측성**: Prometheus + Grafana + Kiali + Jaeger + Loki 모니터링 스택
 
 ---
 
@@ -53,7 +53,7 @@ CloudJet은 현대적인 항공편 예약 시스템을 구축하기 위한 **마
 | **Registry** | AWS ECR Public Registry |
 | **Cloud** | AWS (EKS, ECR, Secrets Manager) |
 | **Code Quality** | SonarCloud, Slack Notifications |
-| **Monitoring** | Prometheus, Grafana, Jaeger, Kiali |
+| **Monitoring** | Prometheus, Grafana, Kiali, Jaeger, Loki |
 | **Payment** | Bootpay API Integration |
 | **Security** | JWT, External Secrets Operator |
 
@@ -62,42 +62,53 @@ CloudJet은 현대적인 항공편 예약 시스템을 구축하기 위한 **마
 ## 🔧 **서비스 상세 설명**
 
 ### 🔐 **Auth Service (5001)**
-- **기능**: 사용자 인증, JWT 토큰 발급, 권한 관리
+- **기능**: JWT 기반 사용자 인증, 회원가입/로그인, 프로필 관리
 - **주요 API**:
-  - `POST /api/auth/login` - 사용자 로그인
   - `POST /api/auth/signup` - 회원가입
-  - `GET /api/auth/health` - 서비스 헬스체크
+  - `POST /api/auth/login` - 로그인
+  - `GET /api/auth/profile` - 사용자 프로필 조회
+  - `PUT /api/auth/profile` - 사용자 프로필 수정
+  - `GET /api/auth/health` - 헬스체크
 
 ### ✈️ **Flight Service (5002)**
-- **기능**: 항공편 검색, 공항 정보, 프로모션 조회
+- **기능**: 항공편 검색 (Redis 캐싱), 공항 정보, 특가/프로모션 조회
 - **주요 API**:
-  - `GET /api/flights/search` - 항공편 검색
-  - `GET /api/airports` - 공항 목록
+  - `GET /api/flights/search` - 항공편 검색 (캐시 적용)
+  - `GET /api/flights/airports` - 공항 목록
   - `GET /api/flights/featured` - 특가 항공편
-  - `GET /api/promotions` - 프로모션 조회
+  - `GET /api/flights/promotions` - 프로모션 조회
+  - `GET /api/flights/health` - 헬스체크
 
 ### 📋 **Booking Service (5003)**
-- **기능**: 예약 생성, 예약 관리, 좌석 조회
+- **기능**: 예약 생성, 예약 관리, 좌석 점유 조회
 - **주요 API**:
-  - `POST /api/bookings` - 예약 생성
+  - `POST /api/bookings` - 예약 생성 (JWT 인증 필요)
   - `GET /api/bookings` - 사용자 예약 목록
-  - `GET /api/bookings/{booking_number}` - 예약 조회
   - `POST /api/bookings/{booking_number}/cancel` - 예약 취소
-  - `GET /api/bookings/occupied-seats/{schedule_id}` - 좌석 조회
+  - `GET /api/bookings/occupied-seats/{schedule_id}` - 좌석 점유 현황
+  - `GET /api/bookings/health` - 헬스체크
 
 ### 💳 **Payment Service (5005)**
-- **기능**: Bootpay 결제 처리, 웹훅 처리, 결제 관리
+- **기능**: Bootpay 결제 초기화, 웹훅 처리, 예약-결제 연결
 - **주요 API**:
-  - `POST /api/payments/init` - 결제 초기화
-  - `POST /api/payments/webhook` - Bootpay 웹훅
+  - `POST /api/payments/init` - 결제 초기화 (JWT 인증 필요)
+  - `POST /api/payments/webhook` - Bootpay 웹훅 처리
   - `POST /api/payments/attach-booking` - 예약-결제 연결
+  - `GET /api/payments/health` - 헬스체크
 
 ### 👨‍💼 **Admin Service (5004)**
-- **기능**: 관리자 대시보드, 통계, 시스템 관리
+- **기능**: 관리자 전용 항공편/예약/할인 관리 (admin_required 인증)
 - **주요 API**:
-  - `GET /api/admin/stats` - 시스템 통계
+  - `GET /api/admin/flights` - 모든 항공편 조회
+  - `POST /api/admin/flights` - 항공편 추가
+  - `POST /api/admin/flights-with-schedules` - 스케줄과 함께 항공편 추가
+  - `DELETE /api/admin/flights/{flight_id}` - 항공편 삭제
+  - `GET /api/admin/schedules` - 스케줄 관리
   - `GET /api/admin/bookings` - 전체 예약 관리
-  - `GET /api/admin/users` - 사용자 관리
+  - `GET /api/admin/bookings/search` - 예약 검색
+  - `PUT /api/admin/bookings/{booking_number}/cancel` - 관리자 예약 취소
+  - `GET/POST/DELETE /api/admin/discounts` - 할인 관리
+  - `GET /api/admin/health` - 헬스체크
 
 ---
 
@@ -380,44 +391,70 @@ SONAR_TOKEN: your-sonarcloud-token
 
 ---
 
-## 📊 **모니터링 & 로깅**
+## 📊 **모니터링 & 관측성**
 
-### **모니터링 스택**
-- **Prometheus**: 메트릭 수집 및 모니터링
-- **Grafana**: 대시보드 및 시각화
-- **Istio**: 서비스 메시 기반 관측성
+### **완전한 모니터링 스택 (K8s 배포)**
 
-### **로깅**
-- **구조화된 로깅**: JSON 형태의 로그 출력
-- **분산 추적**: Jaeger를 통한 요청 추적
-- **중앙화된 로그 관리**: ELK Stack 연동
+#### **📈 Prometheus + Grafana**
+- **Prometheus**: 메트릭 수집 및 저장 (15일 보존, 20GB 스토리지)
+- **Grafana**: 대시보드 및 시각화 (Loki 데이터소스 연동)
+- **Alertmanager**: 알림 및 경고 관리
+- **Node Exporter**: 노드 메트릭 수집
+- **실시간 모니터링**: CPU, 메모리, 트래픽, 에러율
 
-### **헬스체크**
+#### **🕸️ Kiali (Service Mesh 관측성)**
+- **서비스 토폴로지**: 마이크로서비스 간 통신 시각화
+- **트래픽 플로우**: 요청 흐름 및 성공/실패율
+- **Istio 설정 검증**: VirtualService, DestinationRule 확인
+- **실시간 트래픽**: user/admin 네임스페이스 모니터링
+
+#### **🔍 Jaeger (분산 추적)**
+- **All-in-One 배포**: 메모리 기반 트레이스 저장 (50,000 traces)
+- **분산 추적**: 마이크로서비스 간 요청 추적
+- **성능 분석**: 레이턴시, 병목 지점 식별
+- **에러 추적**: 실패한 요청의 상세 분석
+
+#### **📝 Loki (로그 집계)**
+- **AWS S3 백엔드**: cloudjet-loki-storage 버킷 사용
+- **로그 보존**: 168시간 (7일) 보존 정책
+- **구조화된 로그**: JSON 로그 수집 및 쿼리
+- **IAM 연동**: loki-irsa-role을 통한 AWS 권한 관리
+
+### **접근 URL (Istio VirtualService)**
 ```bash
-# 각 서비스의 헬스체크 엔드포인트
+# K8s 클러스터 내부 접근
+https://grafana.cloudjet.click      # Grafana 대시보드
+https://kiali.cloudjet.click        # Kiali 서비스 메시
+https://jaeger.cloudjet.click       # Jaeger 분산 추적
+https://prometheus.cloudjet.click   # Prometheus 메트릭
+```
+
+### **서비스별 헬스체크 엔드포인트**
+```bash
+# 각 마이크로서비스의 상태 확인
 GET /api/auth/health              # Auth Service (포트 5001)
 GET /api/flights/health           # Flight Service (포트 5002)
 GET /api/bookings/health          # Booking Service (포트 5003)
 GET /api/admin/health             # Admin Service (포트 5004)
 GET /api/payments/health          # Payment Service (포트 5005)
-
-# Kubernetes 환경에서의 통합 헬스체크
-GET /api/health                   # API Gateway 통합 헬스체크
 ```
+
+### **메트릭 수집**
+- **Istio 메트릭**: 서비스 메시 트래픽, 성공률, 레이턴시
+- **비즈니스 메트릭**: 예약 수, 결제 성공률, 사용자 활동
+- **인프라 메트릭**: Kubernetes 클러스터, 노드 상태
 
 ---
 
 ## ⚡ **성능 최적화**
 
 ### **캐시 전략**
-- **Redis 캐시**: 항공편 검색 결과, 사용자 세션
-- **Application Level**: 자주 조회되는 데이터 메모리 캐시
-- **CDN**: 정적 파일 및 API 응답 캐싱
+- **Redis 캐시**: 항공편 검색 결과 (5분 TTL), 사용자 세션 관리
 
 ### **데이터베이스 최적화**
-- **인덱스 최적화**: 검색 성능을 위한 적절한 인덱스
-- **쿼리 최적화**: 데이터베이스 부하 최소화 쿼리
-- **커넥션 풀 관리**: 조회 성능 향상
+- **커넥션 풀**: MySQL 커넥션 풀 관리로 성능 최적화
+- **인덱스 최적화**: SQL 스키마에 검색 성능 인덱스 구현
+- **쿼리 최적화**: Parameterized Query로 SQL Injection 방어 및 성능 향상
 
 ---
 
