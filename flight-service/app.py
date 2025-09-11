@@ -34,6 +34,9 @@ def create_app():
     @app.before_request
     def log_request_info():
         if not request.path.endswith('/health'):
+            # 모든 헤더 확인을 위한 디버깅
+            print(f"[FLIGHT-SERVICE-DEBUG] Headers: {dict(request.headers)}")
+            print(f"[FLIGHT-SERVICE-DEBUG] Remote addr: {request.remote_addr}")
             real_ip = get_client_ip(request)
             print(f"[FLIGHT-SERVICE] {request.method} {request.path} - Client IP: {real_ip}")
     
