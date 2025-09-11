@@ -1,6 +1,6 @@
 # CloudJet 항공편 검색 서비스 (포트 5002)
 # 항공편 조회, 검색, 스케줄 관리 담당
-from flask import Flask
+from flask import Flask, request
 from routes import flight_bp
 import os
 
@@ -16,6 +16,16 @@ def create_app():
     
     app.config['SECRET_KEY'] = secret_key
     app.config['DEBUG'] = os.environ.get('FLASK_ENV') == 'development'
+    
+    # 실제 클라이언트 IP 로깅 미들웨어
+    @app.before_request
+    def log_request_info():
+        real_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        if real_ip and ',' in real_ip:
+            real_ip = real_ip.split(',')[0].strip()
+        
+        if request.endpoint and not request.path.endswith('/health'):
+            print(f"[FLIGHT-SERVICE] {request.method} {request.path} - Client IP: {real_ip}")
     
     # 블루프린트 등록
     app.register_blueprint(flight_bp, url_prefix='/api/flights')

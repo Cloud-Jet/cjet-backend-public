@@ -1,5 +1,5 @@
 # Booking Service Main Application
-from flask import Flask
+from flask import Flask, request
 from routes import booking_bp
 import os
 import sys
@@ -16,6 +16,16 @@ def create_app():
     
     app.config['SECRET_KEY'] = secret_key
     app.config['DEBUG'] = os.environ.get('FLASK_ENV') == 'development'
+    
+    # 실제 클라이언트 IP 로깅 미들웨어
+    @app.before_request
+    def log_request_info():
+        real_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        if real_ip and ',' in real_ip:
+            real_ip = real_ip.split(',')[0].strip()
+        
+        if request.endpoint and not request.path.endswith('/health'):
+            print(f"[BOOKING-SERVICE] {request.method} {request.path} - Client IP: {real_ip}")
     
     # 블루프린트 등록
     app.register_blueprint(booking_bp, url_prefix='/api/bookings')
