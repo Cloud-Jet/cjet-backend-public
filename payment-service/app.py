@@ -33,4 +33,4 @@ if __name__ == '__main__':
     port = int(os.environ.get('PAYMENT_SERVICE_PORT', 5005))
     print(f"Payment Service starting on port {port}")
     app.run(host='0.0.0.0', port=port, debug=app.config['DEBUG'])
-#v4.0
+#v2.0.1# Build trigger Thu, Sep 11, 2025  2:43:42 PM
