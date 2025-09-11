@@ -3,7 +3,7 @@
 # CD 경로수정했음 
 # v3.0.0 테스트
 # v5.0 테스트
-# 슬랙알림 테스트 
+# 슬랙알림 테스트 2
 from flask import Flask, request
 from routes import auth_bp
 from werkzeug.middleware.proxy_fix import ProxyFix
