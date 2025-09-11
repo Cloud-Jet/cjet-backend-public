@@ -2,7 +2,8 @@
 # JWT 토큰 기반 회원가입, 로그인, 토큰 검증 담당
 # CD 경로수정했음 
 # v3.0.0 테스트
-# v5.0 테스트 
+# v5.0 테스트
+# 슬랙알림 테스트 
 from flask import Flask, request
 from routes import auth_bp
 from werkzeug.middleware.proxy_fix import ProxyFix
