@@ -45,9 +45,79 @@ jobs:
         python -m py_compile models.py
         echo "✅ Flight Service syntax check passed"
 
-  build-and-push:
+  sonarcloud:
+    name: SonarCloud Analysis
     runs-on: ubuntu-latest
     needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+    
+    - name: Install Flight Service dependencies
+      run: |
+        cd flight-service
+        pip install -r requirements.txt
+    
+    - name: SonarCloud Scan
+      uses: SonarSource/sonarcloud-action@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      with:
+        args: >
+          -Dsonar.qualitygate.wait=true
+          -Dsonar.qualitygate.timeout=300
+          -Dsonar.coverage.exclusions=**/test_*.py,**/tests/**
+          -Dsonar.issue.ignore.multicriteria=e1,e2
+          -Dsonar.issue.ignore.multicriteria.e1.ruleKey=*
+          -Dsonar.issue.ignore.multicriteria.e1.resourceKey=**/*
+          -Dsonar.issue.ignore.multicriteria.e1.type=CODE_SMELL
+          -Dsonar.issue.ignore.multicriteria.e2.ruleKey=*
+          -Dsonar.issue.ignore.multicriteria.e2.resourceKey=**/*
+          -Dsonar.issue.ignore.multicriteria.e2.type=DUPLICATION
+    
+    - name: Slack Success Notification
+      if: success()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: success
+        channel: '#ci-cd-alerts'
+        text: |
+          ✅ **Flight Service 코드 품질 검사 성공!**
+          Repository: ${{ github.repository }}
+          Branch: ${{ github.ref_name }}
+          Commit: ${{ github.sha }}
+          SonarCloud: https://sonarcloud.io/project/overview?id=Cloud-Jet_cjet-backend-public
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+    - name: Slack Failure Notification
+      if: failure()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: failure
+        channel: '#ci-cd-alerts'
+        text: |
+          ❌ **Flight Service 코드 품질 검사 실패!**
+          Repository: ${{ github.repository }}
+          Branch: ${{ github.ref_name }}
+          Commit: ${{ github.sha }}
+          확인 필요: https://github.com/${{ github.repository }}/actions
+          SonarCloud: https://sonarcloud.io/project/overview?id=Cloud-Jet_cjet-backend-public
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  build-and-push:
+    runs-on: ubuntu-latest
+    needs: [test, sonarcloud]
     if: (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/backend/ch')) || (github.event_name == 'pull_request' && github.base_ref == 'main')
     
     steps:
