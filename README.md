@@ -4,7 +4,9 @@
 > Flask + Docker + Kubernetes + ArgoCD를 활용한 완전 자동화 GitOps 워크플로우
 
 [![CI/CD](https://github.com/Cloud-Jet/cjet-backend-public/workflows/CI/badge.svg)](https://github.com/Cloud-Jet/cjet-backend-public/actions)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=cloudjet-backend&metric=alert_status)](https://sonarcloud.io/dashboard?id=cloudjet-backend)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Cloud-Jet_cjet-backend-public&metric=alert_status)](https://sonarcloud.io/project/overview?id=Cloud-Jet_cjet-backend-public)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=Cloud-Jet_cjet-backend-public&metric=coverage)](https://sonarcloud.io/project/overview?id=Cloud-Jet_cjet-backend-public)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=Cloud-Jet_cjet-backend-public&metric=security_rating)](https://sonarcloud.io/project/overview?id=Cloud-Jet_cjet-backend-public)
 
 ---
 
@@ -18,7 +20,8 @@ CloudJet은 현대적인 항공편 예약 시스템을 구축하기 위한 **마
 - 🔄 **완전 자동화 CI/CD**: GitHub Actions + ArgoCD를 통한 GitOps 워크플로우  
 - ☁️ **클라우드 네이티브**: AWS EKS + ECR + Istio 서비스 메시 활용
 - 🔒 **엔터프라이즈 보안**: JWT 인증, 시크릿 관리, 보안 정책 적용
-- 📊 **모니터링 & 로깅**: 프로메테우스 기반 완전 관측성
+- 📊 **코드 품질 관리**: SonarCloud 정적 분석 + 실시간 Slack 알림
+- 🔍 **모니터링 & 로깅**: 프로메테우스 기반 완전 관측성
 
 ---
 
@@ -49,6 +52,7 @@ CloudJet은 현대적인 항공편 예약 시스템을 구축하기 위한 **마
 | **CI/CD** | GitHub Actions, ArgoCD |
 | **Registry** | AWS ECR Public Registry |
 | **Cloud** | AWS (EKS, ECR, Secrets Manager) |
+| **Code Quality** | SonarCloud, Slack Notifications |
 | **Monitoring** | Prometheus, Grafana, Jaeger, Kiali |
 | **Payment** | Bootpay API Integration |
 | **Security** | JWT, External Secrets Operator |
@@ -336,6 +340,42 @@ SECRET_KEY=                   # JWT 서명 키
 DB_PASSWORD=                  # 데이터베이스 비밀번호
 REDIS_PASSWORD=               # Redis 비밀번호
 BOOTPAY_PRIVATE_KEY=         # 결제 API 비밀키
+```
+
+---
+
+## 📊 **코드 품질 관리**
+
+### **SonarCloud 정적 분석**
+- **품질 게이트**: PR 머지 전 자동 코드 품질 검증
+- **보안 스캔**: OWASP Top 10 기반 취약점 검사
+- **코드 커버리지**: 단위 테스트 커버리지 추적
+- **기술 부채**: 유지보수성 및 복잡도 측정
+- **실시간 모니터링**: [SonarCloud 대시보드](https://sonarcloud.io/project/overview?id=Cloud-Jet_cjet-backend-public)
+
+### **품질 메트릭**
+```bash
+# 로컬에서 SonarQube 스캔 실행
+sonar-scanner \
+  -Dsonar.projectKey=Cloud-Jet_cjet-backend-public \
+  -Dsonar.organization=cloud-jet \
+  -Dsonar.host.url=https://sonarcloud.io \
+  -Dsonar.login=$SONAR_TOKEN
+```
+
+### **Slack 통합 알림**
+- **채널**: `#ci-cd-alerts`
+- **알림 이벤트**:
+  - ✅ 빌드 성공/실패
+  - 📊 SonarCloud 품질 검사 결과
+  - 🚀 배포 상태 (성공/실패/롤백)
+  - ⚠️ 품질 게이트 실패 알림
+
+### **GitHub Secrets 설정**
+```yaml
+# 필수 환경변수
+SLACK_WEBHOOK_URL: https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
+SONAR_TOKEN: your-sonarcloud-token
 ```
 
 ---
