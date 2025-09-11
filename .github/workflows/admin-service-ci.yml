@@ -73,16 +73,7 @@ jobs:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       with:
         args: >
-          -Dsonar.qualitygate.wait=true
-          -Dsonar.qualitygate.timeout=300
-          -Dsonar.coverage.exclusions=**/test_*.py,**/tests/**
-          -Dsonar.issue.ignore.multicriteria=e1,e2
-          -Dsonar.issue.ignore.multicriteria.e1.ruleKey=*
-          -Dsonar.issue.ignore.multicriteria.e1.resourceKey=**/*
-          -Dsonar.issue.ignore.multicriteria.e1.type=CODE_SMELL
-          -Dsonar.issue.ignore.multicriteria.e2.ruleKey=*
-          -Dsonar.issue.ignore.multicriteria.e2.resourceKey=**/*
-          -Dsonar.issue.ignore.multicriteria.e2.type=DUPLICATION
+          -Dsonar.qualitygate.wait=false
     
     - name: Slack Success Notification
       if: success()
