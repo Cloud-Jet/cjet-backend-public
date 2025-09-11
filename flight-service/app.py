@@ -52,4 +52,4 @@ if __name__ == '__main__':
     print(f"Flight Service starting on port {port}")
     # debug는 환경변수에 따라 결정되도록 수정
     app.run(host='0.0.0.0', port=port, debug=app.config['DEBUG'])
-#v2.0.1# Build trigger Thu, Sep 11, 2025  2:43:41 PM
+#v2.0.3# Build trigger Thu, Sep 11, 2025 

@@ -2,7 +2,8 @@
 # JWT 토큰 기반 회원가입, 로그인, 토큰 검증 담당
 # CD 경로수정했음 
 # v3.0.0 테스트
-# v5.0 테스트 
+# v5.0 테스트
+# 슬랙알림 테스트 3
 from flask import Flask, request
 from routes import auth_bp
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -53,4 +54,4 @@ if __name__ == '__main__':
     print(f"Auth Service starting on port {port}")
     # debug는 환경변수에 따라 결정되도록 수정
     app.run(host='0.0.0.0', port=port, debug=app.config['DEBUG'])
-#v2.0.1# Build trigger Thu, Sep 11, 2025  2:43:41 PM
+#v2.0.3# Build trigger Thu, Sep 11, 2025 
