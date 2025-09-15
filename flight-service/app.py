@@ -34,8 +34,11 @@ def create_app():
     @app.before_request
     def log_request_info():
         if not request.path.endswith('/health'):
+            # 모든 헤더 확인을 위한 디버깅
+            print(f"[FLIGHT-SERVICE-DEBUG] Headers: {dict(request.headers)}", flush=True)
+            print(f"[FLIGHT-SERVICE-DEBUG] Remote addr: {request.remote_addr}", flush=True)
             real_ip = get_client_ip(request)
-            print(f"[FLIGHT-SERVICE] {request.method} {request.path} - Client IP: {real_ip}")
+            print(f"[FLIGHT-SERVICE] {request.method} {request.path} - Client IP: {real_ip}", flush=True)
     
     # 블루프린트 등록
     app.register_blueprint(flight_bp, url_prefix='/api/flights')
@@ -49,4 +52,4 @@ if __name__ == '__main__':
     print(f"Flight Service starting on port {port}")
     # debug는 환경변수에 따라 결정되도록 수정
     app.run(host='0.0.0.0', port=port, debug=app.config['DEBUG'])
-#v2.0.1# Build trigger Thu, Sep 11, 2025  2:43:41 PM
+#v2.0.3# Build trigger Thu, Sep 11, 2025 
