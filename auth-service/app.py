@@ -4,6 +4,8 @@
 # v3.0.0 테스트
 # v5.0 테스트
 # 슬랙알림 테스트 3
+# 롤아웃 설정 후 슬랙알람까지 설정
+
 from flask import Flask, request
 from routes import auth_bp
 from werkzeug.middleware.proxy_fix import ProxyFix
