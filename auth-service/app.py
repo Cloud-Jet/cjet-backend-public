@@ -24,6 +24,7 @@
 # Analysis 템플릿 제거
 # prePromotionAnalysis 제거
 # prePromotionAnalysis 제거 후 테스트
+# 테스트
 
 from flask import Flask, request
 from routes import auth_bp
