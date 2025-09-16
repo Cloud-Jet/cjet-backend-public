@@ -21,6 +21,7 @@
 # Analysis 비활성화
 # Analysis 비활성화2
 # Analysis 비활성화3
+# Analysis 템플릿 제거
 
 from flask import Flask, request
 from routes import auth_bp
