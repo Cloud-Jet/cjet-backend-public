@@ -8,6 +8,7 @@
 # 슬랙 알림 롤아웃 오는지 테스트
 # CI/CD 테스트 09-16
 # 버전 테스트
+# 버전 테스트2
 
 from flask import Flask, request
 from routes import auth_bp
