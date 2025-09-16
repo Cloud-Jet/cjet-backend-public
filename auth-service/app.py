@@ -27,6 +27,7 @@
 # 테스트
 # 레플리카 테스트
 # 슬랙 알람 테스트
+# 슬랙 알람 테스트2
 
 from flask import Flask, request
 from routes import auth_bp
