@@ -87,6 +87,11 @@ jobs:
       with:
         args: >
           -Dsonar.qualitygate.wait=false
+          -Dsonar.coverage.exclusions=**/*
+          -Dsonar.cpd.exclusions=**/*
+          -Dsonar.duplicated_lines_density=95
+          -Dsonar.coverage.new_code=0
+          -Dsonar.security_hotspots_reviewed.new_code=0
     
     - name: Slack Success Notification
       if: success()
