@@ -10,6 +10,7 @@
 # 버전 테스트
 # 버전 테스트2
 # 버전 테스트3
+# 헬스체크 성공 이제 슬랙알람이랑 블루그린 모니터링
 
 from flask import Flask, request
 from routes import auth_bp
