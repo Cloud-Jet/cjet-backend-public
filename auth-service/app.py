@@ -5,6 +5,7 @@
 # v5.0 테스트
 # 슬랙알림 테스트 3
 # 롤아웃 설정 후 슬랙알람까지 설정
+# 슬랙 알림 롤아웃 오는지 테스트
 
 from flask import Flask, request
 from routes import auth_bp
