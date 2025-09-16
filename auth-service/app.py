@@ -18,6 +18,7 @@
 # 최종 슬랙 알림 테스트 - consecutiveErrorLimit 해결됨!
 # 진짜 최종 슬랙 알림 테스트
 # 템플릿에 버전 기록
+# Analysis 비활성화
 
 from flask import Flask, request
 from routes import auth_bp
