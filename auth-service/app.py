@@ -33,6 +33,7 @@
 # 0917 슬랙 알람 테스트4
 # 0917 슬랙 알람 테스트5
 # 0917 슬랙 알람 테스트6 시간
+# 0917 슬랙 알람 테스트6 시간 되돌리기
 
 from flask import Flask, request
 from routes import auth_bp
