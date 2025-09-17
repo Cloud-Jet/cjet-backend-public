@@ -32,6 +32,7 @@
 # 0917 슬랙 알람 테스트3 
 # 0917 슬랙 알람 테스트4
 # 0917 슬랙 알람 테스트5
+# 0917 슬랙 알람 테스트6 시간
 
 from flask import Flask, request
 from routes import auth_bp
