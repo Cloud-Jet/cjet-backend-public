@@ -30,12 +30,19 @@ def create_app():
     app.config['SECRET_KEY'] = secret_key
     app.config['DEBUG'] = os.environ.get('FLASK_ENV') == 'development'
     
+    # Health check IP 필터링을 위한 설정
+    HEALTH_CHECK_IPS = {'127.0.0.6', '127.0.0.1', '::1'}
+
     # 실제 클라이언트 IP 로깅 미들웨어 (Istio 환경 최적화)
     @app.before_request
     def log_request_info():
-        if not request.path.endswith('/health'):
-            real_ip = get_client_ip(request)
-            print(f"[BOOKING-SERVICE] {request.method} {request.path} - Client IP: {real_ip}")
+        real_ip = get_client_ip(request)
+
+        # Health check 요청은 로깅하지 않음
+        if request.path.endswith('/health') or real_ip in HEALTH_CHECK_IPS:
+            return
+
+        print(f"[BOOKING-SERVICE] {request.method} {request.path} - Client IP: {real_ip}")
     
     # 블루프린트 등록
     app.register_blueprint(booking_bp, url_prefix='/api/bookings')

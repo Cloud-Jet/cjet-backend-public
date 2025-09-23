@@ -20,48 +20,61 @@ auth_bp = Blueprint('auth', __name__)
 def signup():
     """회원가입"""
     try:
+        from app import get_client_ip
         User = get_models()
         data = request.get_json()
-        
+        client_ip = get_client_ip(request)
+
         required_fields = ['name', 'email', 'password', 'phone', 'birthDate']
         for field in required_fields:
             if field not in data or not data[field]:
+                print(f"[AUTH-SERVICE] 회원가입 실패 - 누락된 필드: {field} | IP: {client_ip}")
                 return jsonify({'message': f'{field}는 필수 입력 항목입니다.'}), 400
-        
+
         user_id, error = User.create_user(
-            data['name'], data['email'], data['password'], 
+            data['name'], data['email'], data['password'],
             data['phone'], data['birthDate']
         )
-        
+
         if error:
+            print(f"[AUTH-SERVICE] 회원가입 실패 - 사용자: {data.get('email', 'N/A')} | 오류: {error} | IP: {client_ip}")
             return jsonify({'message': error}), 400
-        
+
+        print(f"[AUTH-SERVICE] 회원가입 성공 - 사용자: {data['email']} (이름: {data['name']}) | 전화번호: {data['phone']} | IP: {client_ip}")
+
         return jsonify({
             'message': '회원가입이 성공적으로 완료되었습니다.',
             'success': True
         }), 201
-        
+
     except Exception as e:
+        print(f"[AUTH-SERVICE] 회원가입 서버 오류: {str(e)} | IP: {get_client_ip(request)}")
         return jsonify({'message': f'서버 오류: {str(e)}'}), 500
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
     """로그인"""
     try:
+        from app import get_client_ip
         User = get_models()
         generate_token, _ = get_auth()
         data = request.get_json()
-        
+        client_ip = get_client_ip(request)
+
         if not data.get('email') or not data.get('password'):
+            print(f"[AUTH-SERVICE] 로그인 실패 - 누락된 입력: 이메일 또는 비밀번호 | IP: {client_ip}")
             return jsonify({'message': '이메일과 비밀번호를 입력해주세요.'}), 400
-        
+
         user, error = User.authenticate_user(data['email'], data['password'])
-        
+
         if error:
+            print(f"[AUTH-SERVICE] 로그인 실패 - 사용자: {data.get('email', 'N/A')} | 오류: {error} | IP: {client_ip}")
             return jsonify({'message': error}), 401
-        
+
         token = generate_token(user['user_id'], user['role'])
-        
+
+        print(f"[AUTH-SERVICE] 로그인 성공 - 사용자: {user['email']} (이름: {user['name']}) | 역할: {user['role']} | IP: {client_ip}")
+
         return jsonify({
             'message': '로그인 성공',
             'token': token,
@@ -73,8 +86,9 @@ def login():
                 'role': user['role']
             }
         }), 200
-        
+
     except Exception as e:
+        print(f"[AUTH-SERVICE] 로그인 서버 오류: {str(e)} | IP: {get_client_ip(request)}")
         return jsonify({'message': f'서버 오류: {str(e)}'}), 500
 
 @auth_bp.route('/profile', methods=['GET'])

@@ -19,46 +19,56 @@ booking_bp = Blueprint('bookings', __name__)
 def create_booking():
     """예약 생성"""
     try:
+        from app import get_client_ip
         Booking = get_models()
-        
+        client_ip = get_client_ip(request)
+
         # 토큰 검증
         token = request.headers.get('Authorization')
         if not token:
+            print(f"[BOOKING-SERVICE] 예약 생성 실패 - 토큰 없음 | IP: {client_ip}")
             return jsonify({'message': '토큰이 없습니다.'}), 401
-            
+
         if token.startswith('Bearer '):
             token = token.split(' ')[1]
-            
+
         import jwt
         from shared.auth import SECRET_KEY
         data_token = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
         current_user_id = data_token['user_id']
-        
+
         data = request.get_json()
-        
+
         required_fields = ['scheduleId', 'passengers', 'contactInfo', 'paymentMethod', 'totalAmount']
         for field in required_fields:
             if field not in data:
+                print(f"[BOOKING-SERVICE] 예약 생성 실패 - 누락된 필드: {field} | 사용자 ID: {current_user_id} | IP: {client_ip}")
                 return jsonify({'message': f'{field}는 필수 입력 항목입니다.'}), 400
-        
+
         booking_result, error = Booking.create_booking(
-            current_user_id, data['scheduleId'], 
+            current_user_id, data['scheduleId'],
             data['passengers'], data['contactInfo'],
             data['paymentMethod'], data['totalAmount'],
             data.get('seats')
         )
-        
+
         if error:
+            print(f"[BOOKING-SERVICE] 예약 생성 실패 - 사용자 ID: {current_user_id} | 항공편 ID: {data.get('scheduleId', 'N/A')} | 오류: {error} | IP: {client_ip}")
             return jsonify({'message': error}), 400
-        
+
+        # 예약 성공 로깅
+        passengers_info = ', '.join([f"{p.get('name', 'N/A')}" for p in data['passengers']])
+        print(f"[BOOKING-SERVICE] 예약 생성 성공 - 예약번호: {booking_result['booking_number']} | 사용자 ID: {current_user_id} | 항공편 ID: {data['scheduleId']} | 승객: {passengers_info} | 총 금액: {data['totalAmount']}원 | 결제방법: {data['paymentMethod']} | IP: {client_ip}")
+
         return jsonify({
             'message': '예약이 성공적으로 생성되었습니다.',
             'booking_number': booking_result['booking_number'],
             'booking_id': booking_result['booking_id'],
             'success': True
         }), 201
-        
+
     except Exception as e:
+        print(f"[BOOKING-SERVICE] 예약 생성 서버 오류: {str(e)} | IP: {get_client_ip(request)}")
         return jsonify({'message': f'서버 오류: {str(e)}'}), 500
 
 @booking_bp.route('/occupied-seats/<int:schedule_id>', methods=['GET'])
@@ -109,35 +119,43 @@ def get_user_bookings():
 def cancel_booking(booking_number):
     """예약 취소"""
     try:
+        from app import get_client_ip
         Booking = get_models()
-        
+        client_ip = get_client_ip(request)
+
         # 토큰 검증
         token = request.headers.get('Authorization')
         if not token:
+            print(f"[BOOKING-SERVICE] 예약 취소 실패 - 토큰 없음 | 예약번호: {booking_number} | IP: {client_ip}")
             return jsonify({'message': '토큰이 없습니다.'}), 401
-            
+
         if token.startswith('Bearer '):
             token = token.split(' ')[1]
-            
+
         import jwt
         from shared.auth import SECRET_KEY
         data_token = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
         current_user_id = data_token['user_id']
-        
+
         success, error = Booking.cancel_booking(current_user_id, booking_number)
-        
+
         if not success:
             if "찾을 수 없습니다" in error:
+                print(f"[BOOKING-SERVICE] 예약 취소 실패 - 예약번호 찾을 수 없음: {booking_number} | 사용자 ID: {current_user_id} | IP: {client_ip}")
                 return jsonify({'message': error}), 404
+            print(f"[BOOKING-SERVICE] 예약 취소 실패 - 예약번호: {booking_number} | 사용자 ID: {current_user_id} | 오류: {error} | IP: {client_ip}")
             return jsonify({'message': error}), 400
-        
+
+        print(f"[BOOKING-SERVICE] 예약 취소 성공 - 예약번호: {booking_number} | 사용자 ID: {current_user_id} | IP: {client_ip}")
+
         return jsonify({
             'message': '예약이 성공적으로 취소되었습니다.',
             'success': True,
             'booking_number': booking_number
         }), 200
-        
+
     except Exception as e:
+        print(f"[BOOKING-SERVICE] 예약 취소 서버 오류: {str(e)} | 예약번호: {booking_number} | IP: {get_client_ip(request)}")
         return jsonify({'message': f'서버 오류: {str(e)}'}), 500
 
 @booking_bp.route('/health', methods=['GET'])
