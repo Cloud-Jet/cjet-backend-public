@@ -70,3 +70,4 @@ if __name__ == '__main__':
         print(f"[BOOKING-SERVICE] 스택 트레이스: {traceback.format_exc()}")
         raise
 #v2.0.3# Build trigger Thu, Sep 11, 2025 
+# 테스트

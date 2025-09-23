@@ -4,6 +4,38 @@
 # v3.0.0 테스트
 # v5.0 테스트
 # 슬랙알림 테스트 3
+# 롤아웃 설정 후 슬랙알람까지 설정
+# 슬랙 알림 롤아웃 오는지 테스트
+# CI/CD 테스트 09-16
+# 버전 테스트
+# 버전 테스트2
+# 버전 테스트3
+# 헬스체크 성공 이제 슬랙알람이랑 블루그린 모니터링
+# 슬랙 알림 테스트 v4
+# 슬랙 알림 테스트 v5
+# 슬랙 알림 테스트 v6
+# 슬랙 알림 테스트 v7
+# 최종 슬랙 알림 테스트 - consecutiveErrorLimit 해결됨!
+# 진짜 최종 슬랙 알림 테스트
+# 템플릿에 버전 기록
+# Analysis 비활성화
+# Analysis 비활성화2
+# Analysis 비활성화3
+# Analysis 템플릿 제거
+# prePromotionAnalysis 제거
+# prePromotionAnalysis 제거 후 테스트
+# 테스트
+# 레플리카 테스트
+# 슬랙 알람 테스트
+# 슬랙 알람 테스트2
+# 0917 슬랙 알람 테스트3
+# 0917 슬랙 알람 테스트3 
+# 0917 슬랙 알람 테스트4
+# 0917 슬랙 알람 테스트5
+# 0917 슬랙 알람 테스트6 시간
+# 0917 슬랙 알람 테스트6 시간 되돌리기
+# 0918 머지 테스트, 예거 포트 명시
+
 from flask import Flask, request
 from routes import auth_bp
 from werkzeug.middleware.proxy_fix import ProxyFix

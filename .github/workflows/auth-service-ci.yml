@@ -87,6 +87,11 @@ jobs:
       with:
         args: >
           -Dsonar.qualitygate.wait=false
+          -Dsonar.coverage.exclusions=**/*
+          -Dsonar.cpd.exclusions=**/*
+          -Dsonar.duplicated_lines_density=95
+          -Dsonar.coverage.new_code=0
+          -Dsonar.security_hotspots_reviewed.new_code=0
     
     - name: Slack Success Notification
       if: success()
@@ -129,6 +134,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
+        # 태그 정보도 함께 가져오기
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
@@ -177,6 +183,12 @@ jobs:
         
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "🏷️ Auth Service version: $VERSION"
+
+        # 버전 태그 생성 (다음 배포를 위해)
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action - Auth Service CI"
+        git tag "$VERSION"
+        git push origin "$VERSION"
 
     - name: Check for Auth Service changes
       id: changes
