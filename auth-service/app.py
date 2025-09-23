@@ -35,6 +35,7 @@
 # 0917 슬랙 알람 테스트6 시간
 # 0917 슬랙 알람 테스트6 시간 되돌리기
 # 0918 머지 테스트, 예거 포트 명시
+# 0923 슬랙 알림 테스트
 
 from flask import Flask, request
 from routes import auth_bp
