@@ -1,10 +1,6 @@
 # CloudJet 인증 서비스 (포트 5001)
 # JWT 토큰 기반 회원가입, 로그인, 토큰 검증 담당
-# 블루그린 시연
-# 블루그린 시연2
-# 블루그린 시연3
-# 블루그린 시연4
-# 블루그린 시연5
+# 블루그린 시연7
 
 from flask import Flask, request
 from routes import auth_bp
