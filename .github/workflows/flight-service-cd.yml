@@ -126,8 +126,33 @@ jobs:
 
         🤖 Generated with GitHub Actions"
         
-        # Push changes
-        git push origin main
+        # Push changes with retry logic
+        for attempt in {1..3}; do
+          echo "🚀 Push attempt $attempt"
+          if git push origin main; then
+            echo "✅ Push successful"
+            break
+          fi
+
+          echo "❌ Push failed, fetching latest changes..."
+          git fetch origin main
+
+          # Fast-forward merge (safe, no conflicts possible)
+          if git merge --ff-only origin/main; then
+            echo "🔄 Fast-forward successful"
+          else
+            echo "💥 Cannot fast-forward - manual resolution required"
+            exit 1
+          fi
+
+          if [ $attempt -eq 3 ]; then
+            echo "❌ Maximum retry attempts reached"
+            exit 1
+          fi
+
+          # Random delay to avoid simultaneous retries
+          sleep $((RANDOM % 10 + 5))
+        done
         
         echo "✅ Flight Service deployment committed and pushed"
         echo "🎉 ArgoCD will automatically sync the changes"
