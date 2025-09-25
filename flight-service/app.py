@@ -1,6 +1,6 @@
 # CloudJet 항공편 검색 서비스 (포트 5002)
 # 항공편 조회, 검색, 스케줄 관리 담당
-# 블루그린 시연10
+# 블루그린 테스트1
 from flask import Flask, request
 from routes import flight_bp
 from werkzeug.middleware.proxy_fix import ProxyFix
